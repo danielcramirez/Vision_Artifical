@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import ImageTk, Image
 import cv2
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
@@ -13,6 +14,11 @@ from tensorflow.keras.optimizers import Adam
 img_width, img_height = 150, 150
 batch_size = 32
 epochs = 10
+
+# Inicialización de rutas para maduros y no maduros
+maduros_dir = None
+no_maduros_dir = None
+dataset_dir = "C:/Users/USER/Documents/Python/Vision_artifical/dataset/"
 
 # Función para cargar imágenes de tomates maduros
 def cargar_maduros():
@@ -49,10 +55,10 @@ def entrenar_modelo():
     )
 
     train_generator = train_datagen.flow_from_directory(
-        'C:/Users/USER/Documents/Python/Vision_artifical/dataset/',  # Ruta raíz del dataset
+        dataset_dir,  # Ruta raíz del dataset
         target_size=(img_width, img_height),
         batch_size=batch_size,
-        class_mode='binary'
+        class_mode='categorical'  # Cambiamos a 'categorical' para varias clases
     )
 
     # Definición del modelo
@@ -65,11 +71,11 @@ def entrenar_modelo():
         MaxPooling2D(pool_size=(2, 2)),
         Flatten(),
         Dense(512, activation='relu'),
-        Dense(1, activation='sigmoid')
+        Dense(2, activation='softmax')  # Cambiamos la salida a 2 clases (rojo y verde)
     ])
 
     # Compilación del modelo
-    model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Entrenamiento del modelo
     model.fit(train_generator, epochs=epochs, verbose=1)
@@ -99,10 +105,11 @@ def usar_camara():
 
             # Hacer la predicción
             prediction = model.predict(input_data)
-            label = 'Tomate Maduro' if prediction[0] > 0.5 else 'Tomate No Maduro'
+            label = 'Tomate Maduro' if prediction[0][0] > 0.5 else 'Tomate No Maduro'
 
             # Mostrar el resultado en el frame
-            cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            color = (0, 255, 0) if label == 'Tomate Maduro' else (0, 0, 255)
+            cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
             # Convertir la imagen para mostrar en Tkinter
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -138,10 +145,6 @@ lbl_video.pack(pady=20)
 # Botón para activar la cámara y hacer la detección
 btn_camara = tk.Button(app, text="Usar Cámara para Detección", command=usar_camara)
 btn_camara.pack(pady=10)
-
-# Inicialización de variables globales
-maduros_dir = None
-no_maduros_dir = None
 
 # Ejecutar la aplicación
 app.mainloop()
